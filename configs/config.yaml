@@ -3,6 +3,5 @@ db:
      hostname: "192.168.1.32"
      port: "5432"
      username: "postgres"
-     password: "postgres"
      dbname: "todo-app"
      sslmode: "disable"

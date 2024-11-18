@@ -5,20 +5,25 @@ import (
 	"github.com/Takeso-user/todo-app/pkg/handler"
 	"github.com/Takeso-user/todo-app/pkg/repository"
 	"github.com/Takeso-user/todo-app/pkg/service"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
 	"log"
+	"os"
 )
 
 func main() {
 	if err := initConfig(); err != nil {
 		log.Fatalf("error initializing configs: %s", err)
 	}
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("error loading env variables: %s", err)
+	}
 	connectPostgres, err := repository.NewPostgresDB(repository.Config{
 		Hostname: viper.GetString("db.hostname"),
 		Port:     viper.GetString("db.port"),
 		Username: viper.GetString("db.username"),
-		Password: viper.GetString("db.password"),
+		Password: os.Getenv("DB_PASSWORD"),
 		DBName:   viper.GetString("db.dbname"),
 		SSLMode:  viper.GetString("db.sslmode"),
 	})
