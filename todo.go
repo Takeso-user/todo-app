@@ -2,8 +2,8 @@ package todo_app
 
 type TodoList struct {
 	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Title       string `json:"title" db:"title" binding:"required"`
+	Description string `json:"description" db:"description"`
 }
 
 type UsersLIst struct {
