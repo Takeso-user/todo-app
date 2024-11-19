@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	todoapp "github.com/Takeso-user/todo-app"
 	"github.com/Takeso-user/todo-app/pkg/handler"
 	"github.com/Takeso-user/todo-app/pkg/repository"
@@ -10,6 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -37,10 +40,27 @@ func main() {
 	handlers := handler.NewHandler(services)
 
 	srv := new(todoapp.Server)
-	if err := srv.Start(viper.GetString("port"), handlers.InitRoutes()); err != nil {
-		logrus.Fatalf("error occured while runing http server: %s", err)
-	}
 
+	go func() {
+		if err := srv.Start(viper.GetString("port"), handlers.InitRoutes()); err != nil {
+			logrus.Fatalf("error occured while runing http server: %s", err)
+		}
+	}()
+	logrus.Printf("todo-app started")
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+	<-quit
+	logrus.Printf("todo-app shutting down")
+	err = srv.Stop(context.Background())
+	if err != nil {
+		logrus.Error("error occured on server shutting down: %s", err)
+		return
+	}
+	err = connectPostgres.Close()
+	if err != nil {
+		logrus.Errorf("error occured on db connection close: %s", err)
+		return
+	}
 }
 
 func initConfig() error {
