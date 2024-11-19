@@ -44,10 +44,14 @@ func (h *Handler) InitRoutes() *gin.Engine {
 			{
 				item.POST("/", h.createItem)
 				item.GET("/", h.getAllItems)
-				item.GET("/:item_id", h.getItemById)
-				item.PUT("/:item_id", h.updateItem)
-				item.DELETE("/:item_id", h.deleteItem)
+
 			}
+		}
+		items := api.Group("/items")
+		{
+			items.GET("/:id", h.getItemById)
+			items.PUT("/:id", h.updateItem)
+			items.DELETE("/:id", h.deleteItem)
 		}
 	}
 	return router
@@ -55,6 +59,14 @@ func (h *Handler) InitRoutes() *gin.Engine {
 
 type ErrorResponse struct {
 	Message string `json:"message"`
+}
+type OkResponse struct {
+	Message string `json:"message"`
+}
+
+func NewOkResponse(message string) *OkResponse {
+	logrus.Infof("NewOkResponse: message=`%s`", message)
+	return &OkResponse{Message: message}
 }
 
 func newErrorResponse(context *gin.Context, statusCode int, message string) {
@@ -197,29 +209,167 @@ func (h *Handler) getListById(context *gin.Context) {
 }
 
 func (h *Handler) deleteList(context *gin.Context) {
-
+	logrus.Infof("user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	err = h.service.TodoList.Delete(userId, id)
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, OkResponse{
+		Message: "Deleted successfully",
+	})
 }
 
 func (h *Handler) updateList(context *gin.Context) {
-
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var input todoapp.UpdateListInput
+	if err := context.BindJSON(&input); err != nil {
+		newErrorResponse(context, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err = h.service.TodoList.Update(userId, id, input); err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, OkResponse{
+		Message: "Updated successfully",
+	})
 }
 
 func (h *Handler) createItem(context *gin.Context) {
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	listId, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var input todoapp.TodoItem
+	if err := context.BindJSON(&input); err != nil {
+		newErrorResponse(context, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	id, err := h.service.TodoItem.Create(userId, listId, input)
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, map[string]interface{}{
+		"id": id,
+	})
 
 }
 
 func (h *Handler) getAllItems(context *gin.Context) {
-
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	listId, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	items, err := h.service.TodoItem.GetAll(userId, listId)
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, items)
 }
 
 func (h *Handler) getItemById(context *gin.Context) {
-
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	itemId, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	items, err := h.service.TodoItem.GetById(userId, itemId)
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, items)
 }
 
 func (h *Handler) updateItem(context *gin.Context) {
-
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	id, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var input todoapp.UpdateItemInput
+	if err := context.BindJSON(&input); err != nil {
+		newErrorResponse(context, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err = h.service.TodoItem.Update(userId, id, input); err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, OkResponse{
+		Message: "Updated successfully",
+	})
 }
 
 func (h *Handler) deleteItem(context *gin.Context) {
-
+	logrus.Infof("!!!user id: %d", context.GetInt(userCtx))
+	userId, err := getUserId(context)
+	if err != nil {
+		newErrorResponse(context, http.StatusBadRequest, fmt.Sprintf("user id= %d not found", userId))
+		return
+	}
+	itemId, err := strconv.Atoi(context.Param("id"))
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	err = h.service.TodoItem.Delete(userId, itemId)
+	if err != nil {
+		newErrorResponse(context, http.StatusInternalServerError, err.Error())
+		return
+	}
+	context.JSON(http.StatusOK, OkResponse{
+		Message: "Deleted successfully",
+	})
 }
